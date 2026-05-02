@@ -108,8 +108,6 @@ export async function getTopNotifications(notifications: Notification[], n = 10)
       }
     }
 
-    // The heap now contains the top N notifications, but not necessarily sorted fully descending.
-    // We sort the extracted N items descending to match the expected format for UI rendering.
     const topN = heap.sort((a, b) => {
       const wA = PRIORITY_WEIGHT[a.type] || 0;
       const wB = PRIORITY_WEIGHT[b.type] || 0;
