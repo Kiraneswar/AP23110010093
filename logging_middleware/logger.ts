@@ -7,7 +7,7 @@ declare const process: any;
 const VALID_STACKS = new Set(['backend', 'frontend']);
 const VALID_LEVELS = new Set(['debug', 'info', 'warn', 'error', 'fatal']);
 const VALID_BACKEND_PACKAGES = new Set(['cache', 'controller', 'cron_job', 'db', 'domain', 'handler', 'repository', 'route', 'service']);
-const VALID_FRONTEND_PACKAGES = new Set(['api', 'component', 'hook', 'page', 'state', 'style']);
+const VALID_FRONTEND_PACKAGES = new Set(['api', 'component', 'hook', 'page', 'state', 'style', 'utils']);
 
 const colors = {
   reset: "\x1b[0m",
