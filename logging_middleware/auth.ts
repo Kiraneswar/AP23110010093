@@ -4,9 +4,9 @@ let currentToken: string | null = null;
 let tokenExpiration: number | null = null;
 let authPromise: Promise<string> | null = null;
 
-const DEFAULT_EXPIRATION_MS = 55 * 60 * 1000; 
+const DEFAULT_EXPIRATION_MS = 55 * 60 * 1000;
 
-export async function getToken(forceRefresh = false): Promise<string> {
+export async function getAuthToken(forceRefresh = false): Promise<string> {
   if (!forceRefresh && currentToken && tokenExpiration && Date.now() < tokenExpiration) {
     return currentToken;
   }
@@ -17,22 +17,27 @@ export async function getToken(forceRefresh = false): Promise<string> {
 
   authPromise = (async () => {
     try {
+      console.log("[Auth] Sending request with body:", JSON.stringify(config.authCredentials, null, 2));
+
       const response = await fetch(`${config.BASE_URL}${config.AUTH_ENDPOINT}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(config.authCredentials || {}),
+        body: JSON.stringify(config.authCredentials),
       });
 
       if (!response.ok) {
-        throw new Error(`Auth request failed with status ${response.status}`);
+        const errorText = await response.text();
+        console.error("[Auth] Request failed:", response.status, errorText);
+        throw new Error(`Auth request failed with status ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
-      
+      console.log("[Auth] Success Response:", data);
+
       currentToken = data.access_token || data.token || data.jwt;
-      
+
       if (!currentToken) {
         throw new Error('Auth response did not contain a recognizable token field (access_token).');
       }

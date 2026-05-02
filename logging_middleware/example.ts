@@ -5,7 +5,12 @@ async function runExamples() {
 
   configureLogger({
     authCredentials: {
-      client_id: "test_runner"
+      email: "test_runner@example.com",
+      name: "Test Runner",
+      rollNo: "000",
+      accessCode: "abc",
+      clientID: "test_runner",
+      clientSecret: "secret"
     }
   });
 

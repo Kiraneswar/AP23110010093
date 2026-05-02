@@ -1,6 +1,6 @@
 import { LogStack, LogLevel, LogPackage } from './types';
 import { config } from './config';
-import { getToken } from './auth';
+import { getAuthToken } from './auth';
 
 declare const process: any;
 
@@ -20,7 +20,7 @@ const colors = {
   pkg: "\x1b[38;2;16;185;129m",
 };
 
-function prettyConsoleLog(stack: string, level: string, pkg: string, message: string) {
+export function prettyConsoleLog(stack: string, level: string, pkg: string, message: string) {
   const isNode = typeof process !== 'undefined' && process.stdout && process.stdout.isTTY;
   if (isNode) {
     const color = colors[level as keyof typeof colors] || colors.reset;
@@ -41,11 +41,11 @@ function validateInputs(stack: string, level: string, pkg: string, message: stri
   if (!VALID_LEVELS.has(level)) {
     throw new Error(`[LoggingMiddleware] Invalid level: '${level}'. Must be one of: ${Array.from(VALID_LEVELS).join(', ')}.`);
   }
-  
+
   if (stack === 'backend' && !VALID_BACKEND_PACKAGES.has(pkg)) {
     throw new Error(`[LoggingMiddleware] Invalid backend package: '${pkg}'. Must be one of: ${Array.from(VALID_BACKEND_PACKAGES).join(', ')}.`);
   }
-  
+
   if (stack === 'frontend' && !VALID_FRONTEND_PACKAGES.has(pkg)) {
     throw new Error(`[LoggingMiddleware] Invalid frontend package: '${pkg}'. Must be one of: ${Array.from(VALID_FRONTEND_PACKAGES).join(', ')}.`);
   }
@@ -63,15 +63,26 @@ export async function Log(
 ): Promise<void> {
   try {
     validateInputs(stack, level, pkg, message);
+    prettyConsoleLog(stack, level, pkg, message);
 
-    const payload = {
-      stack,
-      level,
-      package: pkg,
-      message,
-    };
 
-    let token = await getToken();
+    if (typeof window !== 'undefined') {
+      fetch('/api/local-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stack, level, pkg, message })
+      }).catch(() => { });
+    }
+
+    const payload = { stack, level, package: pkg, message };
+
+    let token;
+    try {
+      token = await getAuthToken();
+    } catch (authError: any) {
+      prettyConsoleLog('backend', 'error', 'middleware', `Could not fetch auth token for logger: ${authError.message}`);
+      return;
+    }
 
     let response = await fetch(`${config.BASE_URL}${config.LOGS_ENDPOINT}`, {
       method: 'POST',
@@ -84,8 +95,8 @@ export async function Log(
 
     if (response.status === 401 || response.status === 403) {
       prettyConsoleLog('backend', 'warn', 'middleware', 'Token expired or unauthorized. Auto-refreshing token...');
-      token = await getToken(true);
-      
+      token = await getAuthToken(true);
+
       response = await fetch(`${config.BASE_URL}${config.LOGS_ENDPOINT}`, {
         method: 'POST',
         headers: {
@@ -103,10 +114,9 @@ export async function Log(
 
   } catch (error: any) {
     if (error.message && !error.message.includes('Invalid')) {
-        prettyConsoleLog('backend', 'error', 'middleware', `Remote logging failed: ${error.message}`);
-        prettyConsoleLog(stack, level, pkg, message);
+      prettyConsoleLog('backend', 'error', 'middleware', `Remote logging failed: ${error.message}`);
     } else {
-        throw error;
+      throw error;
     }
   }
 }
